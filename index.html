@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attendance Planner</title>
+<meta name="description" content="Daily attendance check-in and 75% rule tracker for Class 11–12 students.">
+<meta name="theme-color" content="#14213D">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Attendance">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FAFAF7;
+    --card:#FFFFFF;
+    --ink:#14213D;
+    --muted:#8A8F9C;
+    --line:#ECEAE3;
+    --safe:#2E7D5B;
+    --safe-bg:#E6F2EB;
+    --warn:#C9622B;
+    --warn-bg:#FBEBE0;
+    --danger:#C03B3B;
+    --danger-bg:#FAE7E7;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    font-family:'Inter', sans-serif;
+    color:var(--ink);
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    padding:28px 16px 50px;
+  }
+  .app{max-width:420px; width:100%;}
+
+  .top{
+    text-align:center;
+    margin-bottom:18px;
+  }
+  .top .eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+  .top h1{
+    font-family:'Sora', sans-serif;
+    font-weight:800;
+    font-size:22px;
+    margin:4px 0 0;
+  }
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:20px;
+    padding:28px 24px;
+    margin-bottom:14px;
+  }
+
+  /* ring + percentage */
+  .ring-wrap{
+    display:flex;
+    justify-content:center;
+    margin-bottom:6px;
+  }
+  .ring{
+    position:relative;
+    width:148px;
+    height:148px;
+  }
+  .ring svg{transform:rotate(-90deg);}
+  #ringProgress{transition: stroke-dashoffset 0.6s ease, stroke 0.4s ease;}
+  .ring .pct{
+    position:absolute;
+    inset:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+  }
+  .ring .pct .num{
+    font-family:'Sora', sans-serif;
+    font-weight:800;
+    font-size:34px;
+    line-height:1;
+    transition: color 0.4s ease;
+  }
+  .ring .pct .lbl{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10.5px;
+    color:var(--muted);
+    letter-spacing:0.06em;
+    margin-top:2px;
+  }
+
+  .status-line{
+    text-align:center;
+    font-size:13.5px;
+    color:var(--muted);
+    margin-top:10px;
+    margin-bottom:20px;
+    min-height:18px;
+  }
+  .status-line b{color:var(--ink);}
+
+  /* day strip */
+  .strip-label{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10.5px;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    margin-bottom:8px;
+  }
+  .strip{
+    display:flex;
+    gap:5px;
+    margin-bottom:22px;
+  }
+  .strip .day{
+    flex:1;
+    height:26px;
+    border-radius:6px;
+    background:var(--line);
+  }
+  .strip .day.present{background:var(--safe);}
+  .strip .day.absent{background:var(--danger);}
+  .strip .day.off{background:transparent; border:1.5px dashed var(--line);}
+
+  /* today action */
+  .today-block{
+    text-align:center;
+  }
+  .today-block .date{
+    font-size:13px;
+    color:var(--muted);
+    margin-bottom:12px;
+  }
+  .tap-row{
+    display:flex;
+    gap:10px;
+  }
+  .tap-row button{
+    flex:1;
+    padding:14px 10px;
+    border-radius:999px;
+    border:none;
+    font-family:'Sora', sans-serif;
+    font-weight:700;
+    font-size:14.5px;
+    cursor:pointer;
+    transition:transform 0.08s, opacity 0.15s, background 0.2s;
+  }
+  .tap-row button:active{transform:scale(0.97);}
+  .btn-present{background:var(--safe-bg); color:var(--safe);}
+  .btn-absent{background:var(--danger-bg); color:var(--danger);}
+  .tap-row button.selected{
+    color:#fff;
+  }
+  .btn-present.selected{background:var(--safe);}
+  .btn-absent.selected{background:var(--danger);}
+
+  .btn-holiday{
+    display:block;
+    width:100%;
+    margin-top:10px;
+    padding:10px;
+    border-radius:10px;
+    border:1.5px dashed var(--line);
+    background:transparent;
+    color:var(--muted);
+    font-family:'Inter', sans-serif;
+    font-size:12.5px;
+    cursor:pointer;
+  }
+  .btn-holiday:hover{border-color:var(--ink); color:var(--ink);}
+  .btn-holiday.active-holiday{border-style:solid; border-color:var(--ink); color:var(--ink); background:#F1F0EA;}
+
+  .simulate-btn{
+    display:block;
+    width:100%;
+    margin-top:8px;
+    padding:11px;
+    border-radius:12px;
+    border:1.5px solid #CFE0F3;
+    background:#EFF5FC;
+    color:#2D5FA0;
+    font-family:'Inter', sans-serif;
+    font-weight:600;
+    font-size:13px;
+    cursor:pointer;
+  }
+  .simulate-btn:hover{background:#E3EEFA;}
+  .sim-preview{
+    margin-top:10px;
+    padding:12px 14px;
+    border-radius:12px;
+    background:#F4F4F0;
+    font-size:13px;
+    color:var(--ink);
+    text-align:left;
+    line-height:1.5;
+  }
+
+  .undo{
+    margin-top:10px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:11.5px;
+    color:var(--muted);
+    background:none;
+    border:none;
+    cursor:pointer;
+    text-decoration:underline;
+  }
+
+  .tip{
+    display:flex;
+    gap:10px;
+    align-items:flex-start;
+    padding:14px 16px;
+    border-radius:14px;
+    font-size:13px;
+    line-height:1.45;
+  }
+  .tip.safe{background:var(--safe-bg); color:#1F5A40;}
+  .tip.warn{background:var(--warn-bg); color:#8F4A1D;}
+  .tip.danger{background:var(--danger-bg); color:#8A2C2C;}
+  .tip .icon{font-size:16px; flex-shrink:0;}
+
+  .setup{
+    text-align:center;
+  }
+  .setup p{
+    font-size:13.5px;
+    color:var(--muted);
+    margin:0 0 18px;
+    line-height:1.5;
+  }
+  .setup .field{
+    text-align:left;
+    margin-bottom:14px;
+  }
+  .setup label{
+    display:block;
+    font-size:11.5px;
+    color:var(--muted);
+    margin-bottom:5px;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+  }
+  .setup input{
+    width:100%;
+    border:1.5px solid var(--line);
+    border-radius:10px;
+    background:transparent;
+    font-family:'JetBrains Mono', monospace;
+    font-size:15px;
+    padding:10px 12px;
+    color:var(--ink);
+    outline:none;
+  }
+  .setup input:focus{border-color:var(--ink);}
+  .setup .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .offday-grid{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:4px;}
+  .offday-grid button{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11.5px;
+    border:1.5px solid var(--line);
+    background:transparent;
+    color:var(--muted);
+    padding:6px 9px;
+    border-radius:8px;
+    cursor:pointer;
+  }
+  .offday-grid button.active{background:var(--ink); border-color:var(--ink); color:#fff;}
+  .setup-submit{
+    width:100%;
+    margin-top:6px;
+    padding:14px;
+    border-radius:12px;
+    border:none;
+    background:var(--ink);
+    color:#fff;
+    font-family:'Sora', sans-serif;
+    font-weight:700;
+    font-size:14.5px;
+    cursor:pointer;
+  }
+
+  .footer-link{
+    text-align:center;
+    margin-top:6px;
+  }
+  .footer-link button{
+    background:none; border:none; color:var(--muted);
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    text-decoration:underline;
+    cursor:pointer;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="top">
+    <div class="eyebrow">75% rule · daily check-in</div>
+    <h1>Safe to Skip?</h1>
+  </div>
+
+  <!-- SETUP CARD (shown once) -->
+  <div class="card setup" id="setupCard" style="display:none;">
+    <p>Quick one-time setup. After this, it's a single tap each day.</p>
+    <div class="field">
+      <label>Working days held so far (before today)</label>
+      <input type="number" id="baseHeld" placeholder="e.g. 120">
+    </div>
+    <div class="field">
+      <label>Days you were present (before today)</label>
+      <input type="number" id="basePresent" placeholder="e.g. 100">
+    </div>
+    <div class="field">
+      <label>Term / exam end date</label>
+      <input type="date" id="endDate">
+    </div>
+    <div class="field">
+      <label>Weekly off days</label>
+      <div class="offday-grid" id="offdays">
+        <button data-d="0">Sun</button><button data-d="1">Mon</button><button data-d="2">Tue</button>
+        <button data-d="3">Wed</button><button data-d="4">Thu</button><button data-d="5">Fri</button><button data-d="6">Sat</button>
+      </div>
+    </div>
+    <button class="setup-submit" id="startBtn">Start tracking</button>
+  </div>
+
+  <!-- MAIN CARD -->
+  <div class="card" id="mainCard" style="display:none;">
+    <div class="ring-wrap">
+      <div class="ring">
+        <svg width="148" height="148">
+          <circle cx="74" cy="74" r="64" fill="none" stroke="#ECEAE3" stroke-width="12"/>
+          <circle id="ringProgress" cx="74" cy="74" r="64" fill="none" stroke="#2E7D5B" stroke-width="12" stroke-linecap="round" stroke-dasharray="402" stroke-dashoffset="402"/>
+        </svg>
+        <div class="pct">
+          <div class="num" id="pctNum">—</div>
+          <div class="lbl">ATTENDANCE</div>
+        </div>
+      </div>
+    </div>
+    <div class="status-line" id="statusLine"></div>
+
+    <div class="strip-label">last 14 days</div>
+    <div class="strip" id="strip"></div>
+
+    <div class="today-block">
+      <div class="date" id="todayDate"></div>
+      <div class="tap-row" id="tapRow">
+        <button class="btn-present" id="btnPresent">🟢 Present</button>
+        <button class="btn-absent" id="btnAbsent">🔴 Absent</button>
+      </div>
+      <button class="btn-holiday" id="btnHoliday">🏖 Declared holiday today — don't count it</button>
+      <button class="undo" id="undoBtn" style="display:none;">undo today's entry</button>
+      <button class="simulate-btn" id="simulateBtn">📅 Can I skip tomorrow?</button>
+      <div class="sim-preview" id="simPreview" style="display:none;"></div>
+    </div>
+  </div>
+
+  <div class="card tip safe" id="tipCard" style="display:none;">
+    <span class="icon">💡</span>
+    <span id="tipText"></span>
+  </div>
+
+  <div class="footer-link">
+    <button id="resetBtn">reset all data</button>
+  </div>
+
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const REQUIRED_PCT = 75;
+const STORAGE_KEY = 'safe-to-skip-data';
+
+let state = null; // { baseHeld, basePresent, endDate, offDays:[], log: {dateStr: 'present'|'absent'} }
+
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return null;
+}
+function saveState(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
+}
+
+function initSetupUI(){
+  let offSel = new Set([0]);
+  document.querySelectorAll('#offdays button').forEach(btn=>{
+    if(offSel.has(+btn.dataset.d)) btn.classList.add('active');
+    btn.addEventListener('click', ()=>{
+      const d = +btn.dataset.d;
+      if(offSel.has(d)){ offSel.delete(d); btn.classList.remove('active'); }
+      else{ offSel.add(d); btn.classList.add('active'); }
+    });
+  });
+  $('startBtn').addEventListener('click', ()=>{
+    const baseHeld = parseInt($('baseHeld').value) || 0;
+    const basePresent = parseInt($('basePresent').value) || 0;
+    const endDate = $('endDate').value;
+    if(!endDate){ alert('Please pick a term end date.'); return; }
+    state = { baseHeld, basePresent, endDate, offDays: Array.from(offSel), log: {} };
+    saveState();
+    render();
+  });
+}
+
+function countSchoolDaysBetween(fromExclusiveISO, toInclusiveISO, offDaysArr){
+  const offSet = new Set(offDaysArr);
+  let cur = new Date(fromExclusiveISO);
+  cur.setDate(cur.getDate()+1);
+  const end = new Date(toInclusiveISO);
+  let count = 0;
+  while(cur <= end){
+    if(!offSet.has(cur.getDay())) count++;
+    cur.setDate(cur.getDate()+1);
+  }
+  return count;
+}
+
+function addSchoolDays(fromExclusiveISO, count, offDaysArr){
+  // returns the ISO date of the Nth school day after fromExclusiveISO
+  const offSet = new Set(offDaysArr);
+  let cur = new Date(fromExclusiveISO);
+  let found = 0;
+  let lastISO = fromExclusiveISO;
+  while(found < count){
+    cur.setDate(cur.getDate()+1);
+    if(!offSet.has(cur.getDay())){
+      found++;
+      lastISO = cur.toISOString().slice(0,10);
+    }
+  }
+  return lastISO;
+}
+
+function computeTotals(){
+  const logged = Object.entries(state.log).filter(([,v]) => v !== 'holiday');
+  const loggedPresent = logged.filter(([,v])=>v==='present').length;
+  const loggedTotal = logged.length;
+
+  const held = state.baseHeld + loggedTotal;
+  const present = state.basePresent + loggedPresent;
+
+  // remaining = school days strictly after today, up to end date
+  const remaining = countSchoolDaysBetween(todayISO(), state.endDate, state.offDays);
+  const totalAtEnd = held + remaining;
+  const pct = held > 0 ? (present/held)*100 : 0;
+
+  const requiredPresent = (REQUIRED_PCT/100) * totalAtEnd;
+  const maxMissable = present + remaining - requiredPresent;
+
+  let safeUntilDate = null;
+  if(maxMissable >= 1 && remaining > 0){
+    const days = Math.min(Math.floor(maxMissable), remaining);
+    safeUntilDate = addSchoolDays(todayISO(), days, state.offDays);
+  }
+
+  return { held, present, pct, remaining, totalAtEnd, maxMissable, safeUntilDate };
+}
+
+function render(){
+  if(!state){
+    $('setupCard').style.display = 'block';
+    $('mainCard').style.display = 'none';
+    $('tipCard').style.display = 'none';
+    return;
+  }
+  $('setupCard').style.display = 'none';
+  $('mainCard').style.display = 'block';
+
+  const t = computeTotals();
+  $('pctNum').textContent = state.baseHeld + Object.keys(state.log).length > 0 ? t.pct.toFixed(1)+'%' : '—';
+
+  // ring
+  const circumference = 402; // 2*pi*64
+  const clamped = Math.max(0, Math.min(100, t.pct));
+  const offset = circumference - (clamped/100)*circumference;
+  const ring = $('ringProgress');
+  ring.setAttribute('stroke-dashoffset', offset);
+  let ringColor = t.pct >= 75 ? '#2E7D5B' : (t.pct >= 65 ? '#C9622B' : '#C03B3B');
+  ring.setAttribute('stroke', ringColor);
+
+  // status line
+  if(t.held === 0){
+    $('statusLine').innerHTML = 'Log today to get started.';
+  } else {
+    $('statusLine').innerHTML = `<b>${t.present}</b> present out of <b>${t.held}</b> days held`;
+  }
+
+  // day strip — last 14 calendar days
+  const strip = $('strip');
+  strip.innerHTML = '';
+  const days = [];
+  for(let i=13;i>=0;i--){
+    const d = new Date();
+    d.setDate(d.getDate()-i);
+    days.push(d.toISOString().slice(0,10));
+  }
+  days.forEach(iso=>{
+    const el = document.createElement('div');
+    const dow = new Date(iso).getDay();
+    if(state.log[iso] === 'present') el.className = 'day present';
+    else if(state.log[iso] === 'absent') el.className = 'day absent';
+    else if(state.log[iso] === 'holiday') el.className = 'day off';
+    else if(state.offDays.includes(dow)) el.className = 'day off';
+    else el.className = 'day';
+    strip.appendChild(el);
+  });
+
+  // today block
+  const today = todayISO();
+  $('todayDate').textContent = new Date().toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'short' });
+  const todayLog = state.log[today];
+  $('btnPresent').classList.toggle('selected', todayLog === 'present');
+  $('btnAbsent').classList.toggle('selected', todayLog === 'absent');
+  $('btnHoliday').classList.toggle('active-holiday', todayLog === 'holiday');
+  $('undoBtn').style.display = todayLog ? 'inline-block' : 'none';
+  $('tapRow').style.opacity = todayLog ? '0.55' : '1';
+
+  // tip
+  renderTip(t);
+}
+
+function renderTip(t){
+  const tip = $('tipCard');
+  const text = $('tipText');
+  tip.style.display = 'flex';
+
+  if(t.held === 0){
+    tip.className = 'tip warn';
+    text.textContent = "Tap 'Present' or 'Absent' below once your day is done — that's all the daily work this needs.";
+    return;
+  }
+
+  if(t.remaining === 0){
+    tip.className = t.pct >= 75 ? 'tip safe' : 'tip danger';
+    text.textContent = t.pct >= 75
+      ? `Term's over and you finished at ${t.pct.toFixed(1)}%. Nicely managed.`
+      : `Term's over at ${t.pct.toFixed(1)}% — below 75%. Talk to your class teacher about condonation.`;
+    return;
+  }
+
+  if(t.maxMissable < 0){
+    const best = ((t.present + t.remaining)/t.totalAtEnd)*100;
+    tip.className = 'tip danger';
+    text.textContent = `Even attending every remaining day caps you at ${best.toFixed(1)}%. Talk to your class teacher soon.`;
+  } else if(t.maxMissable < 1){
+    tip.className = 'tip danger';
+    text.textContent = `You can't afford to miss a single day for the rest of the term.`;
+  } else {
+    const safeDays = Math.floor(t.maxMissable);
+    tip.className = safeDays >= 5 ? 'tip safe' : 'tip warn';
+    const icon = safeDays >= 5 ? '✅' : '⚠️';
+    tip.querySelector('.icon').textContent = icon;
+    let dateLine = '';
+    if(t.safeUntilDate){
+      const niceDate = new Date(t.safeUntilDate).toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'short' });
+      dateLine = ` Worst case, you're covered through ${niceDate} even if you miss every day until then.`;
+    }
+    text.textContent = `You can still miss up to ${safeDays} more day${safeDays===1?'':'s'} and stay at or above 75%.${dateLine}`;
+  }
+}
+
+function logToday(value){
+  const today = todayISO();
+  if(state.log[today] === value){
+    delete state.log[today]; // tap again to undo
+  } else {
+    state.log[today] = value;
+  }
+  saveState();
+  render();
+}
+
+$('btnPresent').addEventListener('click', ()=>logToday('present'));
+$('btnAbsent').addEventListener('click', ()=>logToday('absent'));
+$('btnHoliday').addEventListener('click', ()=>logToday('holiday'));
+
+$('simulateBtn').addEventListener('click', ()=>{
+  const preview = $('simPreview');
+  if(preview.style.display === 'block'){
+    preview.style.display = 'none';
+    return;
+  }
+  const t = computeTotals();
+  if(t.held === 0){
+    preview.style.display = 'block';
+    preview.innerHTML = `Log a few days first so there's something to calculate from.`;
+    return;
+  }
+  // simulate: tomorrow counted as absent, on top of whatever today's actual log already is
+  const tomorrowHeld = t.held + 1;
+  const tomorrowPresent = t.present; // absent adds to held, not present
+  const tomorrowPct = (tomorrowPresent / tomorrowHeld) * 100;
+  const safe = tomorrowPct >= REQUIRED_PCT;
+  preview.style.display = 'block';
+  preview.innerHTML = `If you're <b>absent tomorrow</b>, you'd be at <b style="color:${safe ? '#2E7D5B' : '#C03B3B'}">${tomorrowPct.toFixed(1)}%</b> — ${safe ? 'still safe.' : 'below 75%.'}<br>This is just a preview, nothing is saved.`;
+});
+$('undoBtn').addEventListener('click', ()=>{
+  delete state.log[todayISO()];
+  saveState();
+  render();
+});
+$('resetBtn').addEventListener('click', ()=>{
+  if(confirm('This will erase all your saved attendance data. Continue?')){
+    localStorage.removeItem(STORAGE_KEY);
+    state = null;
+    render();
+  }
+});
+
+initSetupUI();
+state = loadState();
+render();if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(()=>{ /* fails silently if not on https/localhost */ });
+  });
+}
+</script>
+</body>
+</html>
